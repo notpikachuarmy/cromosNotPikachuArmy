@@ -8,18 +8,20 @@
 </head>
 <body>
     <header>
-        <h1>Tototo Clicker 🪙</h1>
+        <div class="header-main">
+            <h1>Tototo Clicker 🪙</h1>
+            <button id="bag-button" onclick="abrirInventario()">🎒</button>
+        </div>
         <div id="stats-bar">
             <div class="stat">Monedas: <span id="coin-count">0</span></div>
             <div class="stat">CPS: <span id="cps-count">0</span></div>
-            <div class="stat">Fragmentos: <span id="frag-count">0</span>/50</div>
         </div>
     </header>
 
     <main>
         <section id="click-section">
             <div id="main-button">🪙</div>
-            <p>Click para minar (Lvl: <span id="click-lvl">1</span>/10)</p>
+            <p>Click para minar</p>
         </section>
 
         <section id="upgrades-section">
@@ -27,12 +29,13 @@
             <div class="flex-container">
                 <div class="shop-card upgrade">
                     <strong>Poder de Click</strong>
-                    <button id="btn-upgrade-click" onclick="mejorarClick()">Mejorar (<span id="cost-click">50</span> 🪙)</button>
+                    <p>Lvl: <span id="click-lvl">1</span>/10</p>
+                    <button id="btn-upgrade-click" onclick="mejorarClick()">Mejorar (50 🪙)</button>
                 </div>
                 <div class="shop-card upgrade">
                     <strong>Auto-Minería</strong>
                     <p>Lvl: <span id="auto-lvl">0</span>/100</p>
-                    <button id="btn-upgrade-auto" onclick="mejorarAuto()">Mejorar (<span id="cost-auto">100</span> 🪙)</button>
+                    <button id="btn-upgrade-auto" onclick="mejorarAuto()">Mejorar (100 🪙)</button>
                 </div>
             </div>
         </section>
@@ -63,13 +66,21 @@
 
     <div id="album-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="cerrarAlbum()">&times;</span>
+            <span class="close-btn" onclick="cerrarModales()">&times;</span>
             <h2 id="modal-titulo"></h2>
-            <div id="modal-stats"></div>
-            <hr>
             <div id="modal-grid" class="album-grid"></div>
         </div>
     </div>
+
+    <div id="inv-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="cerrarModales()">&times;</span>
+            <h2>Inventario de Fragmentos 🎒</h2>
+            <p>Consigue 50 fragmentos de una categoría para un sobre gratis.</p>
+            <div id="inv-grid" class="inv-grid"></div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
