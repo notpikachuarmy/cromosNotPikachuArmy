@@ -8,10 +8,14 @@
 </head>
 <body>
     <header>
-        <div class="header-main">
+        <div class="header-main" style="flex-direction: column; gap: 10px; display: flex; align-items: center;">
             <h1>Tototo Clicker 🪙</h1>
-            <button id="bag-button" onclick="abrirInventario()">🎒</button>
+            
+            <button id="bag-button" onclick="abrirInventario()" style="width: auto; min-width: 120px; padding: 10px 20px; font-size: 1.1em;">
+                🎒 Mi Mochila
+            </button>
         </div>
+
         <div id="stats-bar">
             <div class="stat">Monedas: <span id="coin-count">0</span></div>
             <div class="stat">CPS: <span id="cps-count">0</span></div>
@@ -21,7 +25,7 @@
     <main>
         <section id="click-section">
             <div id="main-button">🪙</div>
-            <p>Click para minar</p>
+            <p>¡Haz click para minar!</p>
         </section>
 
         <section id="upgrades-section">
@@ -41,20 +45,24 @@
         </section>
 
         <hr>
+
         <section id="shop-section">
             <h2>Tienda de Sobres</h2>
-            <div id="pack-list" class="flex-container"></div>
+            <div id="pack-list" class="flex-container">
+                </div>
         </section>
 
         <hr>
+
         <section id="collection-section">
             <h2>Mi Colección Global</h2>
             <div id="global-stats-panel" class="global-stats">
-                <div id="global-total-percent">Cargando...</div>
+                <div id="global-total-percent">Cargando progreso...</div>
                 <div id="global-rareza-counts"></div>
                 <div id="global-albums-completed"></div>
             </div>
-            <div id="album-container" class="flex-container"></div>
+            <div id="album-container" class="flex-container">
+                </div>
         </section>
 
         <section id="system-menu">
@@ -76,8 +84,9 @@
         <div class="modal-content">
             <span class="close-btn" onclick="cerrarModales()">&times;</span>
             <h2>Inventario de Fragmentos 🎒</h2>
-            <p>Consigue 50 fragmentos de una categoría para un sobre gratis.</p>
-            <div id="inv-grid" class="inv-grid"></div>
+            <p>Reúne 50 fragmentos de una categoría para canjear un sobre gratuito.</p>
+            <div id="inv-grid" class="inv-grid">
+                </div>
         </div>
     </div>
 
