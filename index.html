@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tototo Collector Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Tototo Clicker 🪙</h1>
+        <div id="stats-bar">
+            <div class="stat">Monedas: <span id="coin-count">0</span></div>
+            <div class="stat">CPS: <span id="cps-count">0</span></div>
+            <div class="stat">Fragmentos: <span id="frag-count">0</span>/50</div>
+        </div>
+    </header>
+
+    <main>
+        <section id="click-section">
+            <div id="main-button">🪙</div>
+            <p>Click para minar (Lvl: <span id="click-lvl">1</span>/10)</p>
+        </section>
+
+        <section id="upgrades-section">
+            <h2>Mejoras Pasivas</h2>
+            <div class="flex-container">
+                <div class="shop-card upgrade">
+                    <strong>Poder de Click</strong>
+                    <button id="btn-upgrade-click" onclick="mejorarClick()">Mejorar (<span id="cost-click">50</span> 🪙)</button>
+                </div>
+                <div class="shop-card upgrade">
+                    <strong>Auto-Minería</strong>
+                    <p>Lvl: <span id="auto-lvl">0</span>/100</p>
+                    <button id="btn-upgrade-auto" onclick="mejorarAuto()">Mejorar (<span id="cost-auto">100</span> 🪙)</button>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+        <section id="shop-section">
+            <h2>Tienda de Sobres</h2>
+            <div id="pack-list" class="flex-container"></div>
+        </section>
+
+        <hr>
+        <section id="collection-section">
+            <h2>Mi Colección Global</h2>
+            <div id="global-stats-panel" class="global-stats">
+                <div id="global-total-percent">Cargando...</div>
+                <div id="global-rareza-counts"></div>
+                <div id="global-albums-completed"></div>
+            </div>
+            <div id="album-container" class="flex-container"></div>
+        </section>
+
+        <section id="system-menu">
+            <button onclick="exportarPartida()">💾 Exportar</button>
+            <button onclick="document.getElementById('import-input').click()">📂 Importar</button>
+            <input type="file" id="import-input" style="display:none" onchange="importarPartida(event)">
+        </section>
+    </main>
+
+    <div id="album-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="cerrarAlbum()">&times;</span>
+            <h2 id="modal-titulo"></h2>
+            <div id="modal-stats"></div>
+            <hr>
+            <div id="modal-grid" class="album-grid"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
