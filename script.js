@@ -7,17 +7,17 @@ let CONFIG_ALBUMES = [];
 let SOBRES_TIENDA = {}; 
 let gameState = {
     coins: 0, clickValue: 1, lvlClick: 1, autoValue: 0, lvlAuto: 0,
-    inventario: [], fragmentos: 0, precios: { click: 50, auto: 100 }
+    inventario: [], fragmentos: {}, // { "TAG": cantidad }
+    precios: { click: 50, auto: 100 }
 };
 
-// --- CARGA ---
 async function cargarJuego() {
     try {
         const [resC, resA] = await Promise.all([fetch(LINK_CSV_CROMOS), fetch(LINK_CSV_ALBUMES)]);
         parsearCromos(await resC.text());
         parsearAlbumes(await resA.text());
         init();
-    } catch (e) { console.error("Error al conectar con Google Sheets"); }
+    } catch (e) { console.error("Error en carga"); }
 }
 
 function parsearCromos(csv) {
@@ -31,24 +31,112 @@ function parsearCromos(csv) {
 function parsearAlbumes(csv) {
     const filas = csv.split('\n').filter(f => f.trim() !== '').slice(1);
     filas.forEach(f => {
-        // CORRECCIÓN: Quitamos la columna 'portada' de la lectura
         const [id, nombre, tags, inicio, fin, costo] = f.split(',').map(s => s.trim());
         const tagsArr = tags.split(';');
-        const rutaImagen = `Portadas/${id}.png`; // Generamos ruta por ID
-
-        CONFIG_ALBUMES.push({ id, nombre, portada: rutaImagen, tags: tagsArr });
-        SOBRES_TIENDA[id] = { costo: parseInt(costo), portada: rutaImagen, tags: tagsArr, fecha: (inicio === 'null') ? null : { inicio, fin } };
+        const rutaImg = `Portadas/${id}.png`;
+        CONFIG_ALBUMES.push({ id, nombre, portada: rutaImg, tags: tagsArr });
+        SOBRES_TIENDA[id] = { costo: parseInt(costo), portada: rutaImg, tags: tagsArr, fecha: (inicio === 'null') ? null : { inicio, fin } };
     });
 }
 
-// --- LÓGICA DE JUEGO ---
 function init() {
     const local = localStorage.getItem('tototo_save_pro');
     if (local) gameState = JSON.parse(local);
+    if (!gameState.fragmentos) gameState.fragmentos = {};
     renderShop();
     renderAlbums();
     actualizarInterfaz();
     setInterval(() => { if (gameState.autoValue > 0) { gameState.coins += gameState.autoValue; actualizarInterfaz(); } }, 1000);
+}
+
+// --- TIENDA Y SOBRES ---
+function comprarSobre(id, conFrag = false) {
+    const s = SOBRES_TIENDA[id];
+    const tagBase = s.tags[0];
+
+    if (conFrag) {
+        if ((gameState.fragmentos[tagBase] || 0) < 50) return;
+        gameState.fragmentos[tagBase] -= 50;
+    } else {
+        if (gameState.coins < s.costo) return;
+        gameState.coins -= s.costo;
+    }
+
+    const rand = Math.random();
+    let rareza = rand < 0.01 ? "UR" : rand < 0.05 ? "SSR" : rand < 0.15 ? "SR" : rand < 0.40 ? "R" : "N";
+    const posibles = BASE_DE_CROMOS.filter(c => c.tags.some(t => s.tags.includes(t)) && c.rareza === rareza);
+    const pool = posibles.length ? posibles : BASE_DE_CROMOS.filter(c => c.tags.some(t => s.tags.includes(t)));
+    const premio = pool[Math.floor(Math.random() * pool.length)];
+
+    if (gameState.inventario.includes(premio.id)) {
+        const val = { "N": 1, "R": 2, "SR": 5, "SSR": 10, "UR": 25 };
+        const tagGana = premio.tags[Math.floor(Math.random() * premio.tags.length)];
+        gameState.fragmentos[tagGana] = (gameState.fragmentos[tagGana] || 0) + val[premio.rareza];
+    } else {
+        gameState.inventario.push(premio.id);
+    }
+
+    renderShop(); renderAlbums(); save(); actualizarInterfaz();
+}
+
+function renderShop() {
+    const container = document.getElementById('pack-list');
+    container.innerHTML = '';
+    for (let id in SOBRES_TIENDA) {
+        const s = SOBRES_TIENDA[id];
+        const tagBase = s.tags[0];
+        const f = gameState.fragmentos[tagBase] || 0;
+        const div = document.createElement('div');
+        div.className = 'shop-card';
+        div.innerHTML = `
+            <img src="${s.portada}" class="pack-img">
+            <strong>${id}</strong>
+            <p>${s.costo} 🪙</p>
+            <button onclick="comprarSobre('${id}', false)">Comprar</button>
+            <button style="margin-top:5px; background:${f >= 50 ? '#3498db' : '#ccc'}" 
+                    ${f < 50 ? 'disabled' : ''} onclick="comprarSobre('${id}', true)">Canjear Gratis</button>
+        `;
+        container.appendChild(div);
+    }
+}
+
+// --- MOCHILA E INVENTARIO ---
+function abrirInventario() {
+    const grid = document.getElementById('inv-grid');
+    grid.innerHTML = '';
+    const tags = Object.keys(gameState.fragmentos);
+    if (tags.length === 0) grid.innerHTML = "<p>No tienes fragmentos aún.</p>";
+    tags.forEach(t => {
+        const cant = gameState.fragmentos[t];
+        if (cant <= 0) return;
+        const div = document.createElement('div');
+        div.className = 'frag-item';
+        div.innerHTML = `<strong>${t}</strong><div>${cant}/50</div>
+            <div class="frag-bar-bg"><div class="frag-bar-fill" style="width:${Math.min((cant/50)*100, 100)}%"></div></div>`;
+        grid.appendChild(div);
+    });
+    document.getElementById('inv-modal').style.display = 'block';
+}
+
+function cerrarModales() {
+    document.getElementById('album-modal').style.display = 'none';
+    document.getElementById('inv-modal').style.display = 'none';
+}
+
+// --- INTERFAZ Y MEJORAS ---
+function actualizarInterfaz() {
+    document.getElementById('coin-count').innerText = Math.floor(gameState.coins);
+    document.getElementById('cps-count').innerText = gameState.autoValue;
+    document.getElementById('click-lvl').innerText = gameState.lvlClick;
+    document.getElementById('auto-lvl').innerText = gameState.lvlAuto;
+
+    const bC = document.getElementById('btn-upgrade-click');
+    if (gameState.lvlClick >= 10) { bC.disabled = true; bC.innerText = "MÁXIMO"; }
+    else { bC.innerHTML = `Mejorar (${gameState.precios.click} 🪙)`; }
+
+    const bA = document.getElementById('btn-upgrade-auto');
+    if (gameState.lvlAuto >= 100) { bA.disabled = true; bA.innerText = "MÁXIMO"; }
+    else { bA.innerHTML = `Mejorar (${gameState.precios.auto} 🪙)`; }
 }
 
 function mejorarClick() {
@@ -67,53 +155,16 @@ function mejorarAuto() {
     save(); actualizarInterfaz();
 }
 
-function comprarSobre(tipo) {
-    const s = SOBRES_TIENDA[tipo];
-    if (gameState.coins < s.costo) return alert("No tienes suficientes monedas 🪙");
-    gameState.coins -= s.costo;
-    
-    const rand = Math.random();
-    let rareza = rand < 0.01 ? "UR" : rand < 0.05 ? "SSR" : rand < 0.15 ? "SR" : rand < 0.40 ? "R" : "N";
-    const posibles = BASE_DE_CROMOS.filter(c => c.tags.some(t => s.tags.includes(t)) && c.rareza === rareza);
-    const pool = posibles.length ? posibles : BASE_DE_CROMOS.filter(c => c.tags.some(t => s.tags.includes(t)) && c.rareza === "N");
-    const premio = pool[Math.floor(Math.random() * pool.length)];
-
-    if (gameState.inventario.includes(premio.id)) {
-        const val = { "N": 1, "R": 2, "SR": 3, "SSR": 4, "UR": 5 };
-        gameState.fragmentos += val[premio.rareza];
-        if (gameState.fragmentos >= 50) { gameState.fragmentos -= 50; gameState.coins += 50; }
-    } else {
-        gameState.inventario.push(premio.id);
-    }
-    renderAlbums(); save(); actualizarInterfaz();
-}
-
-function renderShop() {
-    const container = document.getElementById('pack-list');
-    container.innerHTML = '';
-    const hoy = new Date();
-    const hoyStr = `${(hoy.getMonth()+1).toString().padStart(2,'0')}-${hoy.getDate().toString().padStart(2,'0')}`;
-    for (let id in SOBRES_TIENDA) {
-        const s = SOBRES_TIENDA[id];
-        if (!s.fecha || (hoyStr >= s.fecha.inicio && hoyStr <= s.fecha.fin)) {
-            const div = document.createElement('div');
-            div.className = 'shop-card';
-            div.innerHTML = `<img src="${s.portada}" class="pack-img"><strong>${id}</strong><p>${s.costo} 🪙</p><button onclick="comprarSobre('${id}')">Comprar</button>`;
-            container.appendChild(div);
-        }
-    }
-}
-
 function renderAlbums() {
     const container = document.getElementById('album-container');
     container.innerHTML = '';
     let completados = 0;
-    const statsRareza = { "N":0, "R":0, "SR":0, "SSR":0, "UR":0 };
-    const totalRareza = { "N":0, "R":0, "SR":0, "SSR":0, "UR":0 };
+    const tR = { "N":0, "R":0, "SR":0, "SSR":0, "UR":0 };
+    const mR = { "N":0, "R":0, "SR":0, "SSR":0, "UR":0 };
 
     BASE_DE_CROMOS.forEach(c => {
-        totalRareza[c.rareza]++;
-        if (gameState.inventario.includes(c.id)) statsRareza[c.rareza]++;
+        tR[c.rareza]++;
+        if (gameState.inventario.includes(c.id)) mR[c.rareza]++;
     });
 
     CONFIG_ALBUMES.forEach(alb => {
@@ -127,10 +178,10 @@ function renderAlbums() {
         container.appendChild(div);
     });
 
-    document.getElementById('global-total-percent').innerHTML = `<h3>Progreso: ${Math.round((gameState.inventario.length / BASE_DE_CROMOS.length) * 100) || 0}% (${gameState.inventario.length}/${BASE_DE_CROMOS.length})</h3>`;
+    document.getElementById('global-total-percent').innerHTML = `<h3>Progreso: ${Math.round((gameState.inventario.length / BASE_DE_CROMOS.length) * 100) || 0}%</h3>`;
     document.getElementById('global-albums-completed').innerText = `Álbumes: ${completados}/${CONFIG_ALBUMES.length}`;
     let rHTML = "";
-    for (let r in statsRareza) { if (totalRareza[r] > 0) rHTML += `<span style="margin:0 10px">${r}: ${statsRareza[r]}/${totalRareza[r]}</span>`; }
+    for (let r in tR) { if (tR[r] > 0) rHTML += `<span style="margin:0 10px">${r}: ${mR[r]}/${tR[r]}</span>`; }
     document.getElementById('global-rareza-counts').innerHTML = rHTML;
 }
 
@@ -149,23 +200,8 @@ function abrirAlbum(id) {
     document.getElementById('album-modal').style.display = 'block';
 }
 
-function cerrarAlbum() { document.getElementById('album-modal').style.display = 'none'; }
-
-function actualizarInterfaz() {
-    document.getElementById('coin-count').innerText = Math.floor(gameState.coins);
-    document.getElementById('cps-count').innerText = gameState.autoValue;
-    document.getElementById('frag-count').innerText = gameState.fragmentos;
-    document.getElementById('click-lvl').innerText = gameState.lvlClick;
-    document.getElementById('auto-lvl').innerText = gameState.lvlAuto;
-    document.getElementById('cost-click').innerText = gameState.precios.click;
-    document.getElementById('cost-auto').innerText = gameState.precios.auto;
-    document.getElementById('btn-upgrade-click').disabled = (gameState.lvlClick >= 10);
-    document.getElementById('btn-upgrade-auto').disabled = (gameState.lvlAuto >= 100);
-}
-
 function save() { localStorage.setItem('tototo_save_pro', JSON.stringify(gameState)); }
 document.getElementById('main-button').onclick = () => { gameState.coins += gameState.clickValue; actualizarInterfaz(); };
-
 function exportarPartida() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(gameState)], {type: 'text/plain'}));
