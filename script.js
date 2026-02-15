@@ -28,7 +28,7 @@ async function cargarJuego() {
         parsearAlbumes(await resA.text());
         init();
     } catch (e) { 
-        console.error("Error cargando los CSV. Verifica que los links sigan publicados."); 
+        console.error("Error cargando los CSV."); 
     }
 }
 
@@ -66,7 +66,6 @@ function init() {
     const local = localStorage.getItem('tototo_save_pro');
     if (local) {
         gameState = JSON.parse(local);
-        // Sanitización para evitar errores de versiones antiguas
         if (typeof gameState.fragmentos !== 'object' || gameState.fragmentos === null) {
             gameState.fragmentos = {};
         }
@@ -76,7 +75,6 @@ function init() {
     renderAlbums();
     actualizarInterfaz();
     
-    // Auto-Minería cada segundo
     setInterval(() => { 
         if (gameState.autoValue > 0) { 
             gameState.coins += gameState.autoValue; 
@@ -85,54 +83,46 @@ function init() {
     }, 1000);
 }
 
-// --- LÓGICA DE COMPRA Y FRAGMENTOS ---
+// --- COMPRA SILENCIOSA (SIN ALERTS) ---
 function comprarSobre(id, conFrag = false) {
     const s = SOBRES_TIENDA[id];
     if (!s) return;
 
-    // Normalizamos la Tag principal del sobre para el inventario
     const tagBase = (s.tags && s.tags.length > 0) ? s.tags[0].toUpperCase().trim() : "GENERAL";
 
     if (conFrag) {
-        if ((gameState.fragmentos[tagBase] || 0) < 50) return alert("¡No tienes suficientes fragmentos de esta categoría!");
+        if ((gameState.fragmentos[tagBase] || 0) < 50) return;
         gameState.fragmentos[tagBase] -= 50;
     } else {
-        if (gameState.coins < s.costo) return alert("¡Necesitas más monedas!");
+        if (gameState.coins < s.costo) return;
         gameState.coins -= s.costo;
     }
 
-    // Probabilidades de Rareza
     const rand = Math.random();
     let rareza = rand < 0.01 ? "UR" : rand < 0.05 ? "SSR" : rand < 0.15 ? "SR" : rand < 0.40 ? "R" : "N";
     
-    // Filtrar cromos que coincidan con las tags del sobre
     let posibles = BASE_DE_CROMOS.filter(c => 
         c.tags.some(t => s.tags.includes(t)) && c.rareza === rareza
     );
     
-    // Si no hay de esa rareza, cogemos cualquiera de ese sobre
     if (posibles.length === 0) {
         posibles = BASE_DE_CROMOS.filter(c => c.tags.some(t => s.tags.includes(t)));
     }
     
-    if (posibles.length === 0) return alert("Error: No hay cromos configurados para este sobre.");
+    if (posibles.length === 0) return;
 
     const premio = posibles[Math.floor(Math.random() * posibles.length)];
 
-    // Si ya lo tenemos -> Dar fragmentos
     if (gameState.inventario.includes(premio.id)) {
         const valores = { "N": 1, "R": 2, "SR": 5, "SSR": 10, "UR": 25 };
         const puntos = valores[premio.rareza] || 1;
-        
-        // El fragmento se suma a la primera tag del cromo o a la del sobre
         const tagDestino = (premio.tags && premio.tags.length > 0) ? premio.tags[0] : tagBase;
         
         gameState.fragmentos[tagDestino] = (gameState.fragmentos[tagDestino] || 0) + puntos;
-        alert(`¡Repetida! 🎒\nHas ganado +${puntos} fragmentos de "${tagDestino}"`);
+        console.log(`Repetida: +${puntos} fragmentos en ${tagDestino}`);
     } else {
-        // Cromo nuevo
         gameState.inventario.push(premio.id);
-        alert(`¡NUEVO CROMO! 🎉\nHas conseguido: ${premio.nombre} (${premio.rareza})`);
+        console.log(`Nuevo cromo: ${premio.nombre}`);
     }
 
     save();
@@ -141,7 +131,7 @@ function comprarSobre(id, conFrag = false) {
     actualizarInterfaz();
 }
 
-// --- RENDERIZADO DE INTERFAZ ---
+// --- INTERFAZ ---
 function renderShop() {
     const container = document.getElementById('pack-list');
     if (!container) return;
@@ -175,20 +165,17 @@ function abrirInventario() {
     const tagsConFragmentos = Object.keys(gameState.fragmentos).filter(t => gameState.fragmentos[t] > 0);
 
     if (tagsConFragmentos.length === 0) {
-        grid.innerHTML = "<p style='grid-column: 1/-1'>No tienes fragmentos todavía. ¡Sigue abriendo sobres!</p>";
+        grid.innerHTML = "<p style='grid-column: 1/-1'>Mochila vacía.</p>";
     } else {
         tagsConFragmentos.forEach(tag => {
             const cant = gameState.fragmentos[tag];
             const progreso = Math.min((cant / 50) * 100, 100);
-            
             const div = document.createElement('div');
             div.className = 'frag-item';
             div.innerHTML = `
                 <strong>${tag}</strong>
                 <div>${cant} / 50</div>
-                <div class="frag-bar-bg">
-                    <div class="frag-bar-fill" style="width: ${progreso}%"></div>
-                </div>
+                <div class="frag-bar-bg"><div class="frag-bar-fill" style="width: ${progreso}%"></div></div>
             `;
             grid.appendChild(div);
         });
@@ -213,7 +200,6 @@ function renderAlbums() {
     CONFIG_ALBUMES.forEach(alb => {
         const cromosAlb = BASE_DE_CROMOS.filter(c => c.tags.some(t => alb.tags.includes(t)));
         const mios = cromosAlb.filter(c => gameState.inventario.includes(c.id)).length;
-        
         if (mios === cromosAlb.length && cromosAlb.length > 0) completados++;
 
         const div = document.createElement('div');
@@ -227,9 +213,8 @@ function renderAlbums() {
         container.appendChild(div);
     });
 
-    // Actualizar Panel de Stats
-    document.getElementById('global-total-percent').innerHTML = `<h3>Progreso Total: ${Math.round((gameState.inventario.length / BASE_DE_CROMOS.length) * 100) || 0}%</h3>`;
-    document.getElementById('global-albums-completed').innerText = `Álbumes Completados: ${completados} / ${CONFIG_ALBUMES.length}`;
+    document.getElementById('global-total-percent').innerHTML = `<h3>Progreso: ${Math.round((gameState.inventario.length / BASE_DE_CROMOS.length) * 100) || 0}%</h3>`;
+    document.getElementById('global-albums-completed').innerText = `Álbumes: ${completados} / ${CONFIG_ALBUMES.length}`;
     
     let htmlR = "";
     for (let r in statsRareza) {
@@ -241,11 +226,9 @@ function renderAlbums() {
 function abrirAlbum(id) {
     const alb = CONFIG_ALBUMES.find(a => a.id === id);
     const cromos = BASE_DE_CROMOS.filter(c => c.tags.some(t => alb.tags.includes(t)));
-    
     document.getElementById('modal-titulo').innerText = alb.nombre;
     const grid = document.getElementById('modal-grid');
     grid.innerHTML = '';
-
     cromos.forEach(c => {
         const tiene = gameState.inventario.includes(c.id);
         const img = document.createElement('img');
@@ -256,14 +239,12 @@ function abrirAlbum(id) {
     document.getElementById('album-modal').style.display = 'block';
 }
 
-// --- UTILIDADES ---
 function actualizarInterfaz() {
     document.getElementById('coin-count').innerText = Math.floor(gameState.coins);
     document.getElementById('cps-count').innerText = gameState.autoValue;
     document.getElementById('click-lvl').innerText = gameState.lvlClick;
     document.getElementById('auto-lvl').innerText = gameState.lvlAuto;
 
-    // Control de botones de mejora
     const bC = document.getElementById('btn-upgrade-click');
     if (gameState.lvlClick >= 10) { bC.disabled = true; bC.innerText = "MÁX"; }
     else { bC.innerText = `Mejorar (${gameState.precios.click} 🪙)`; }
@@ -320,11 +301,10 @@ function importarPartida(event) {
         try {
             gameState = JSON.parse(e.target.result);
             save(); location.reload();
-        } catch (err) { alert("Archivo no válido."); }
+        } catch (err) { console.error("Error al importar."); }
     };
     reader.readAsText(event.target.files[0]);
 }
 
-// Iniciar proceso
 cargarJuego();
 
