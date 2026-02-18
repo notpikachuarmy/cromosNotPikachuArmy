@@ -246,7 +246,7 @@ function actualizarInterfaz() {
     document.getElementById('auto-lvl').innerText = gameState.lvlAuto;
 
     const bC = document.getElementById('btn-upgrade-click');
-    if (gameState.lvlClick >= 100) { bC.disabled = true; bC.innerText = "MÁX"; }
+    if (gameState.lvlClick >= 10) { bC.disabled = true; bC.innerText = "MÁX"; }
     else { bC.innerText = `Mejorar (${gameState.precios.click} 🪙)`; }
 
     const bA = document.getElementById('btn-upgrade-auto');
@@ -255,7 +255,7 @@ function actualizarInterfaz() {
 }
 
 function mejorarClick() {
-    if (gameState.lvlClick >= 100 || gameState.coins < gameState.precios.click) return;
+    if (gameState.lvlClick >= 10 || gameState.coins < gameState.precios.click) return;
     gameState.coins -= gameState.precios.click;
     gameState.clickValue++;
     gameState.lvlClick++;
