@@ -255,7 +255,7 @@ function actualizarInterfaz() {
 }
 
 function mejorarClick() {
-    if (gameState.lvlClick >= 10 || gameState.coins < gameState.precios.click) return;
+    if (gameState.lvlClick >= 100 || gameState.coins < gameState.precios.click) return;
     gameState.coins -= gameState.precios.click;
     gameState.clickValue++;
     gameState.lvlClick++;
